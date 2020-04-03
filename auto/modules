@@ -965,6 +965,15 @@ if [ $MAIL != NO ]; then
         . auto/module
     fi
 
+    if [ $MAIL_SIEVE = YES ]; then
+        ngx_module_name=ngx_mail_sieve_module
+        ngx_module_deps=src/mail/ngx_mail_sieve_module.h
+        ngx_module_srcs="src/mail/ngx_mail_sieve_module.c \
+                         src/mail/ngx_mail_sieve_handler.c"
+
+        . auto/module
+    fi
+
     if [ $MAIL_SMTP = YES ]; then
         ngx_module_name=ngx_mail_smtp_module
         ngx_module_deps=src/mail/ngx_mail_smtp_module.h

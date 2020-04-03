@@ -533,6 +533,11 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
                            + sizeof(CRLF) - 1;
                     break;
 
+                case NGX_MAIL_SIEVE_PROTOCOL:
+                    size = sizeof("BYE \"\"") - 1 + len
+                           + sizeof(CRLF) - 1;
+                    break;
+
                 default: /* NGX_MAIL_SMTP_PROTOCOL */
                     ctx->err = ctx->errmsg;
                     continue;
@@ -559,11 +564,27 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
                     *p++ = 'N'; *p++ = 'O'; *p++ = ' ';
                     break;
 
+                case NGX_MAIL_SIEVE_PROTOCOL:
+                    p = ngx_cpymem(p, s->tag.data, s->tag.len);
+                    *p++ = 'B'; *p++ = 'Y'; *p++ = 'E'; *p++ = ' '; *p++ = '"';
+                    break;
+
                 default: /* NGX_MAIL_SMTP_PROTOCOL */
                     break;
                 }
 
                 p = ngx_cpymem(p, ctx->header_start, len);
+
+                switch (s->protocol) {
+
+                case NGX_MAIL_SIEVE_PROTOCOL:
+                    *p++ = '"';
+                    break;
+
+                default: /* NGX_MAIL_SMTP_PROTOCOL */
+                    break;
+                }
+
                 *p++ = CR; *p++ = LF;
 
                 ctx->err.len = p - ctx->err.data;
