@@ -12,8 +12,6 @@
 #include <ngx_mail_sieve_module.h>
 
 
-static ngx_int_t ngx_mail_sieve_login(ngx_mail_session_t *s,
-    ngx_connection_t *c);
 static ngx_int_t ngx_mail_sieve_authenticate(ngx_mail_session_t *s,
     ngx_connection_t *c);
 static ngx_int_t ngx_mail_sieve_capability(ngx_mail_session_t *s,
@@ -30,12 +28,11 @@ static ngx_int_t ngx_mail_sieve_starttls(ngx_mail_session_t *s,
 //				   "\"VERSION\" \"1.0\"" CRLF
 //				   "OK \"SIEVE ready.\"" CRLF;
 static u_char  sieve_ok[] = "OK completed" CRLF;
-static u_char  sieve_next[] = "+ OK" CRLF;
+static u_char  sieve_next[] = "OK" CRLF;
 static u_char  sieve_plain_next[] = "+ " CRLF;
 static u_char  sieve_ready[] = "OK \"SIEVE ready.\"" CRLF;
-static u_char  sieve_username[] = "+ VXNlcm5hbWU6" CRLF;
-static u_char  sieve_password[] = "+ UGFzc3dvcmQ6" CRLF;
-static u_char  sieve_bye[] = "* BYE" CRLF;
+static u_char  sieve_username[] = "\"VXNlcm5hbWU6\"" CRLF;
+static u_char  sieve_password[] = "\"UGFzc3dvcmQ6\"" CRLF;
 static u_char  sieve_invalid_command[] = "NO \"Error in MANAGESIEVE command: Unknown command.\"" CRLF;
 
 
@@ -213,10 +210,6 @@ ngx_mail_sieve_auth_state(ngx_event_t *rev)
 
             switch (s->command) {
 
-            case NGX_SIEVE_LOGIN:
-                rc = ngx_mail_sieve_login(s, c);
-                break;
-
             case NGX_SIEVE_AUTHENTICATE:
                 rc = ngx_mail_sieve_authenticate(s, c);
                 break;
@@ -227,7 +220,6 @@ ngx_mail_sieve_auth_state(ngx_event_t *rev)
 
             case NGX_SIEVE_LOGOUT:
                 s->quit = 1;
-                ngx_str_set(&s->text, sieve_bye);
                 break;
 
             case NGX_SIEVE_NOOP:
@@ -336,52 +328,6 @@ ngx_mail_sieve_auth_state(ngx_event_t *rev)
 
 
 static ngx_int_t
-ngx_mail_sieve_login(ngx_mail_session_t *s, ngx_connection_t *c)
-{
-    ngx_str_t  *arg;
-
-#if (NGX_MAIL_SSL)
-    if (ngx_mail_starttls_only(s, c)) {
-        return NGX_MAIL_PARSE_INVALID_COMMAND;
-    }
-#endif
-
-    arg = s->args.elts;
-
-    if (s->args.nelts != 2 || arg[0].len == 0) {
-        return NGX_MAIL_PARSE_INVALID_COMMAND;
-    }
-
-    s->login.len = arg[0].len;
-    s->login.data = ngx_pnalloc(c->pool, s->login.len);
-    if (s->login.data == NULL) {
-        return NGX_ERROR;
-    }
-
-    ngx_memcpy(s->login.data, arg[0].data, s->login.len);
-
-    s->passwd.len = arg[1].len;
-    s->passwd.data = ngx_pnalloc(c->pool, s->passwd.len);
-    if (s->passwd.data == NULL) {
-        return NGX_ERROR;
-    }
-
-    ngx_memcpy(s->passwd.data, arg[1].data, s->passwd.len);
-
-#if (NGX_DEBUG_MAIL_PASSWD)
-    ngx_log_debug2(NGX_LOG_DEBUG_MAIL, c->log, 0,
-                   "sieve login:\"%V\" passwd:\"%V\"",
-                   &s->login, &s->passwd);
-#else
-    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
-                   "sieve login:\"%V\"", &s->login);
-#endif
-
-    return NGX_DONE;
-}
-
-
-static ngx_int_t
 ngx_mail_sieve_authenticate(ngx_mail_session_t *s, ngx_connection_t *c)
 {
     ngx_int_t                  rc;
@@ -435,7 +381,7 @@ ngx_mail_sieve_authenticate(ngx_mail_session_t *s, ngx_connection_t *c)
             }
         }
 
-        if (ngx_mail_auth_cram_md5_salt(s, c, "+ ", 2) == NGX_OK) {
+        if (ngx_mail_auth_cram_md5_salt(s, c, "", 0, 1) == NGX_OK) {
             s->mail_state = ngx_sieve_auth_cram_md5;
             return NGX_OK;
         }

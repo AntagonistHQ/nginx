@@ -666,20 +666,6 @@ ngx_mail_sieve_parse_command(ngx_mail_session_t *s)
                     }
                     break;
 
-                case 5:
-                    if ((c[0] == 'L'|| c[0] == 'l')
-                        && (c[1] == 'O'|| c[1] == 'o')
-                        && (c[2] == 'G'|| c[2] == 'g')
-                        && (c[3] == 'I'|| c[3] == 'i')
-                        && (c[4] == 'N'|| c[4] == 'n'))
-                    {
-                        s->command = NGX_SIEVE_LOGIN;
-
-                    } else {
-                        goto invalid;
-                    }
-                    break;
-
                 case 6:
                     if ((c[0] == 'L'|| c[0] == 'l')
                         && (c[1] == 'O'|| c[1] == 'o')
@@ -813,6 +799,8 @@ ngx_mail_sieve_parse_command(ngx_mail_session_t *s)
             break;
 
         case sw_argument:
+	    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, s->connection->log, 0, "SW ARGUMENT: '%s'", p);
+	    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, s->connection->log, 0, "SW QUOTED: '%d'", s->quoted);
             if (ch == ' ' && s->quoted) {
                 break;
             }
@@ -977,7 +965,7 @@ done:
         s->literal_len = 0;
     }
 
-    s->state = (s->command != NGX_SIEVE_AUTHENTICATE) ? sw_start : sw_argument;
+    s->state = (s->command != NGX_SIEVE_AUTHENTICATE) ? sw_start : sw_spaces_before_argument;
 
     return NGX_OK;
 

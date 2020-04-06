@@ -286,15 +286,12 @@ typedef struct {
 #define NGX_IMAP_AUTHENTICATE  7
 
 
-#define NGX_SIEVE_LOGIN         1
-#define NGX_SIEVE_LOGOUT        2
-#define NGX_SIEVE_CAPABILITY    3
-#define NGX_SIEVE_NOOP          4
-#define NGX_SIEVE_STARTTLS      5
-
-#define NGX_SIEVE_NEXT          6
-
-#define NGX_SIEVE_AUTHENTICATE  7
+#define NGX_SIEVE_LOGOUT        1
+#define NGX_SIEVE_CAPABILITY    2
+#define NGX_SIEVE_NOOP          3
+#define NGX_SIEVE_STARTTLS      4
+#define NGX_SIEVE_NEXT          5
+#define NGX_SIEVE_AUTHENTICATE  6
 
 
 #define NGX_SMTP_HELO          1
@@ -409,7 +406,7 @@ ngx_int_t ngx_mail_auth_login_username(ngx_mail_session_t *s,
 ngx_int_t ngx_mail_auth_login_password(ngx_mail_session_t *s,
     ngx_connection_t *c);
 ngx_int_t ngx_mail_auth_cram_md5_salt(ngx_mail_session_t *s,
-    ngx_connection_t *c, char *prefix, size_t len);
+    ngx_connection_t *c, char *prefix, size_t len, ngx_uint_t quote);
 ngx_int_t ngx_mail_auth_cram_md5(ngx_mail_session_t *s, ngx_connection_t *c);
 ngx_int_t ngx_mail_auth_external(ngx_mail_session_t *s, ngx_connection_t *c,
     ngx_uint_t n);

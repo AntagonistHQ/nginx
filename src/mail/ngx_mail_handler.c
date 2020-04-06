@@ -520,28 +520,39 @@ ngx_mail_auth_login_password(ngx_mail_session_t *s, ngx_connection_t *c)
 
 ngx_int_t
 ngx_mail_auth_cram_md5_salt(ngx_mail_session_t *s, ngx_connection_t *c,
-    char *prefix, size_t len)
+    char *prefix, size_t len, ngx_uint_t quote)
 {
     u_char      *p;
     ngx_str_t    salt;
-    ngx_uint_t   n;
+    ngx_uint_t   n = 0;
 
+    if (quote) {
+        len += 2;
+    }
     p = ngx_pnalloc(c->pool, len + ngx_base64_encoded_length(s->salt.len) + 2);
     if (p == NULL) {
         return NGX_ERROR;
     }
 
-    salt.data = ngx_cpymem(p, prefix, len);
+    if (quote) {
+        len -= 2;
+        salt.data = ngx_cpymem(p, "\"", 1);
+	n++;
+    }
+    salt.data = ngx_cpymem(p+ n, prefix, len);
     s->salt.len -= 2;
 
     ngx_encode_base64(&salt, &s->salt);
 
     s->salt.len += 2;
-    n = len + salt.len;
+    n += len + salt.len;
+    if (quote) {
+        p[n++] = '"';
+    }
     p[n++] = CR; p[n++] = LF;
 
     s->out.len = n;
-    s->out.data = p;
+    s->out.data = p--;
 
     return NGX_OK;
 }
