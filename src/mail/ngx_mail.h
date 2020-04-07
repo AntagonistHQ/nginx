@@ -102,6 +102,7 @@ typedef struct {
 #define NGX_MAIL_POP3_PROTOCOL  0
 #define NGX_MAIL_IMAP_PROTOCOL  1
 #define NGX_MAIL_SMTP_PROTOCOL  2
+#define NGX_MAIL_SIEVE_PROTOCOL  3
 
 
 typedef struct ngx_mail_protocol_s  ngx_mail_protocol_t;
@@ -151,6 +152,21 @@ typedef enum {
     ngx_imap_user,
     ngx_imap_passwd
 } ngx_imap_state_e;
+
+
+typedef enum {
+    ngx_sieve_start = 0,
+    ngx_sieve_starttls,
+    ngx_sieve_auth_login_username,
+    ngx_sieve_auth_login_password,
+    ngx_sieve_auth_plain,
+    ngx_sieve_auth_cram_md5,
+    ngx_sieve_auth_external,
+    ngx_sieve_login,
+    ngx_sieve_login_capabilities,
+    ngx_sieve_user,
+    ngx_sieve_passwd
+} ngx_sieve_state_e;
 
 
 typedef enum {
@@ -227,7 +243,7 @@ typedef struct {
 
     ngx_uint_t              login_attempt;
 
-    /* used to parse POP3/IMAP/SMTP command */
+    /* used to parse POP3/IMAP/SIEVE/SMTP command */
 
     ngx_uint_t              state;
     u_char                 *cmd_start;
@@ -269,6 +285,14 @@ typedef struct {
 #define NGX_IMAP_NEXT          6
 
 #define NGX_IMAP_AUTHENTICATE  7
+
+
+#define NGX_SIEVE_LOGOUT        1
+#define NGX_SIEVE_CAPABILITY    2
+#define NGX_SIEVE_NOOP          3
+#define NGX_SIEVE_STARTTLS      4
+#define NGX_SIEVE_NEXT          5
+#define NGX_SIEVE_AUTHENTICATE  6
 
 
 #define NGX_SMTP_HELO          1
@@ -383,7 +407,7 @@ ngx_int_t ngx_mail_auth_login_username(ngx_mail_session_t *s,
 ngx_int_t ngx_mail_auth_login_password(ngx_mail_session_t *s,
     ngx_connection_t *c);
 ngx_int_t ngx_mail_auth_cram_md5_salt(ngx_mail_session_t *s,
-    ngx_connection_t *c, char *prefix, size_t len);
+    ngx_connection_t *c, char *prefix, size_t len, ngx_uint_t quote);
 ngx_int_t ngx_mail_auth_cram_md5(ngx_mail_session_t *s, ngx_connection_t *c);
 ngx_int_t ngx_mail_auth_external(ngx_mail_session_t *s, ngx_connection_t *c,
     ngx_uint_t n);

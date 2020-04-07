@@ -13,6 +13,7 @@ extern "C" {
   #include <ngx_mail.h>
   #include <ngx_mail_pop3_module.h>
   #include <ngx_mail_imap_module.h>
+  #include <ngx_mail_sieve_module.h>
   #include <ngx_mail_smtp_module.h>
 }
 

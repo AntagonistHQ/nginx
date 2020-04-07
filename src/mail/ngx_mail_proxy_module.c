@@ -24,6 +24,7 @@ typedef struct {
 static void ngx_mail_proxy_block_read(ngx_event_t *rev);
 static void ngx_mail_proxy_pop3_handler(ngx_event_t *rev);
 static void ngx_mail_proxy_imap_handler(ngx_event_t *rev);
+static void ngx_mail_proxy_sieve_handler(ngx_event_t *rev);
 static void ngx_mail_proxy_smtp_handler(ngx_event_t *rev);
 static void ngx_mail_proxy_dummy_handler(ngx_event_t *ev);
 static ngx_int_t ngx_mail_proxy_read_response(ngx_mail_session_t *s,
@@ -171,6 +172,11 @@ ngx_mail_proxy_init(ngx_mail_session_t *s, ngx_addr_t *peer)
     case NGX_MAIL_IMAP_PROTOCOL:
         p->upstream.connection->read->handler = ngx_mail_proxy_imap_handler;
         s->mail_state = ngx_imap_start;
+        break;
+
+    case NGX_MAIL_SIEVE_PROTOCOL:
+        p->upstream.connection->read->handler = ngx_mail_proxy_sieve_handler;
+        s->mail_state = ngx_sieve_start;
         break;
 
     default: /* NGX_MAIL_SMTP_PROTOCOL */
@@ -409,6 +415,144 @@ ngx_mail_proxy_imap_handler(ngx_event_t *rev)
 
     case ngx_imap_passwd:
         s->connection->read->handler = ngx_mail_proxy_handler;
+        s->connection->write->handler = ngx_mail_proxy_handler;
+        rev->handler = ngx_mail_proxy_handler;
+        c->write->handler = ngx_mail_proxy_handler;
+
+        pcf = ngx_mail_get_module_srv_conf(s, ngx_mail_proxy_module);
+        ngx_add_timer(s->connection->read, pcf->timeout);
+        ngx_del_timer(c->read);
+
+        c->log->action = NULL;
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "client logged in");
+
+        ngx_mail_proxy_handler(s->connection->write);
+
+        return;
+
+    default:
+#if (NGX_SUPPRESS_WARN)
+        ngx_str_null(&line);
+#endif
+        break;
+    }
+
+    if (c->send(c, line.data, line.len) < (ssize_t) line.len) {
+        /*
+         * we treat the incomplete sending as NGX_ERROR
+         * because it is very strange here
+         */
+        ngx_mail_proxy_internal_server_error(s);
+        return;
+    }
+
+    s->proxy->buffer->pos = s->proxy->buffer->start;
+    s->proxy->buffer->last = s->proxy->buffer->start;
+}
+
+
+static void
+ngx_mail_proxy_sieve_handler(ngx_event_t *rev)
+{
+    u_char                 *p;
+    ngx_int_t               rc;
+    ngx_str_t               line;
+    ngx_str_t               userpass;
+    ngx_str_t               b64_userpass;
+    ngx_connection_t       *c;
+    ngx_mail_session_t     *s;
+    ngx_mail_proxy_conf_t  *pcf;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_MAIL, rev->log, 0,
+                   "mail proxy sieve auth handler");
+
+    c = rev->data;
+    s = c->data;
+
+    if (rev->timedout) {
+        ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
+                      "upstream timed out");
+        c->timedout = 1;
+        ngx_mail_proxy_internal_server_error(s);
+        return;
+    }
+
+    rc = ngx_mail_proxy_read_response(s, s->mail_state);
+
+    if (rc == NGX_AGAIN) {
+        return;
+    }
+
+    if (rc == NGX_ERROR) {
+        ngx_mail_proxy_upstream_error(s);
+        return;
+    }
+
+    switch (s->mail_state) {
+
+    case ngx_sieve_start:
+        ngx_log_debug0(NGX_LOG_DEBUG_MAIL, rev->log, 0,
+                       "mail proxy send login");
+
+        s->connection->log->action = "sending LOGIN command to upstream";
+
+        line.len = s->tag.len + sizeof("AUTHENTICATE ") - 1
+                   + 1 + NGX_SIZE_T_LEN + 1 + 2;
+        line.data = ngx_pnalloc(c->pool, line.len);
+        if (line.data == NULL) {
+            ngx_mail_proxy_internal_server_error(s);
+            return;
+        }
+
+	userpass.len = s->login.len + s->passwd.len + 2;
+	userpass.data = ngx_pnalloc(c->pool, userpass.len);
+        if (userpass.data == NULL) {
+            ngx_mail_proxy_internal_server_error(s);
+            return;
+        }
+	b64_userpass.len = ngx_base64_encoded_length(userpass.len) + 2;
+	b64_userpass.data = ngx_pnalloc(c->pool, b64_userpass.len);
+        if (b64_userpass.data == NULL) {
+            ngx_mail_proxy_internal_server_error(s);
+            return;
+        }
+
+	p = userpass.data;
+	*p++ = '\0';
+        p = ngx_cpymem(p, s->login.data, s->login.len);
+        *p++ = '\0';
+        p = ngx_cpymem(p, s->passwd.data, s->passwd.len);
+
+	ngx_encode_base64(&b64_userpass, &userpass);
+	line.len = ngx_sprintf(line.data, "AUTHENTICATE \"PLAIN\" \"%V\"" CRLF,
+                               &b64_userpass)
+                   - line.data;
+
+        s->mail_state = ngx_sieve_login;
+        break;
+
+    case ngx_sieve_login:
+        ngx_log_debug0(NGX_LOG_DEBUG_MAIL, rev->log, 0,
+                       "mail proxy send capabilities");
+
+        s->connection->log->action = "sending CAPABILITY command to upstream";
+
+        line.len = s->tag.len + sizeof("AUTHENTICATE ") - 1
+                   + 1 + NGX_SIZE_T_LEN + 1 + 2;
+        line.data = ngx_pnalloc(c->pool, line.len);
+        if (line.data == NULL) {
+            ngx_mail_proxy_internal_server_error(s);
+            return;
+        }
+
+	line.len = ngx_sprintf(line.data, "CAPABILITY" CRLF)
+                   - line.data;
+
+        s->mail_state = ngx_sieve_login_capabilities;
+        break;
+
+    case ngx_sieve_login_capabilities:
+	s->connection->read->handler = ngx_mail_proxy_handler;
         s->connection->write->handler = ngx_mail_proxy_handler;
         rev->handler = ngx_mail_proxy_handler;
         c->write->handler = ngx_mail_proxy_handler;
@@ -787,6 +931,42 @@ ngx_mail_proxy_read_response(ngx_mail_session_t *s, ngx_uint_t state)
                 if (p[0] == 'O' && p[1] == 'K') {
                     return NGX_OK;
                 }
+            }
+            break;
+        }
+
+        break;
+
+    case NGX_MAIL_SIEVE_PROTOCOL:
+        if (p[0] == '"') {
+            m = b->last - (sizeof(CRLF "OK" CRLF) - 1);
+
+            while (m > p) {
+                if (m[0] == CR && m[1] == LF) {
+                    break;
+                }
+                m--;
+            }
+
+            if (m <= p || m[0] == '"') {
+                return NGX_AGAIN;
+            }
+            p = m + 2;
+        }
+
+        switch (state) {
+
+        case ngx_sieve_start:
+        case ngx_sieve_login:
+	     ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, "1 upstream sent: \"%s\"", p);
+            if (p[0] == 'O' && p[1] == 'K') {
+                return NGX_OK;
+            }
+            break;
+        case ngx_sieve_login_capabilities:
+	     ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, "2 upstream sent: \"%s\"", p);
+            if (p[0] == 'O' && p[1] == 'K') {
+                return NGX_OK;
             }
             break;
         }

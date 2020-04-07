@@ -492,7 +492,7 @@ ngx_mail_pop3_auth(ngx_mail_session_t *s, ngx_connection_t *c)
             return NGX_MAIL_PARSE_INVALID_COMMAND;
         }
 
-        if (ngx_mail_auth_cram_md5_salt(s, c, "+ ", 2) == NGX_OK) {
+        if (ngx_mail_auth_cram_md5_salt(s, c, "+ ", 2, 0) == NGX_OK) {
             s->mail_state = ngx_pop3_auth_cram_md5;
             return NGX_OK;
         }

@@ -571,6 +571,9 @@ syn keyword ngxDirective contained session_log
 syn keyword ngxDirective contained session_log_format
 syn keyword ngxDirective contained session_log_zone
 syn keyword ngxDirective contained set_real_ip_from
+syn keyword ngxDirective contained sieve_auth
+syn keyword ngxDirective contained sieve_capabilities
+syn keyword ngxDirective contained sieve_client_buffer
 syn keyword ngxDirective contained slice
 syn keyword ngxDirective contained smtp_auth
 syn keyword ngxDirective contained smtp_capabilities

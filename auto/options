@@ -112,6 +112,7 @@ MAIL=NO
 MAIL_SSL=NO
 MAIL_POP3=YES
 MAIL_IMAP=YES
+MAIL_SIEVE=YES
 MAIL_SMTP=YES
 
 STREAM=NO
@@ -305,6 +306,8 @@ use the \"--with-mail_ssl_module\" option instead"
         ;;
         --without-mail_pop3_module)      MAIL_POP3=NO               ;;
         --without-mail_imap_module)      MAIL_IMAP=NO               ;;
+        --without-mail_sieve_module)
+                                         MAIL_SIEVE=NO        ;;
         --without-mail_smtp_module)      MAIL_SMTP=NO               ;;
 
         --with-stream)                   STREAM=YES                 ;;
@@ -517,11 +520,12 @@ cat << END
   --without-http                     disable HTTP server
   --without-http-cache               disable HTTP cache
 
-  --with-mail                        enable POP3/IMAP4/SMTP proxy module
-  --with-mail=dynamic                enable dynamic POP3/IMAP4/SMTP proxy module
+  --with-mail                        enable POP3/IMAP4/SIEVE/SMTP proxy module
+  --with-mail=dynamic                enable dynamic POP3/IMAP4/SIEVE/SMTP proxy module
   --with-mail_ssl_module             enable ngx_mail_ssl_module
   --without-mail_pop3_module         disable ngx_mail_pop3_module
   --without-mail_imap_module         disable ngx_mail_imap_module
+  --without-mail_sieve_module        disable ngx_mail_sieve_module
   --without-mail_smtp_module         disable ngx_mail_smtp_module
 
   --with-stream                      enable TCP/UDP proxy module
