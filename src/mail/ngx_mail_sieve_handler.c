@@ -20,16 +20,9 @@ static ngx_int_t ngx_mail_sieve_starttls(ngx_mail_session_t *s,
     ngx_connection_t *c);
 
 
-//static u_char  sieve_greeting[] = "\"IMPLEMENTATION\" \"Dovecot Pigeonhole\"" CRLF
-//				   "\"SIEVE\" \"\"" CRLF
-//				   "\"NOTIFY\" \"mailto\"" CRLF
-//				   "\"SASL\" \"\"" CRLF
-//				   "\"STARTTLS\"" CRLF
-//				   "\"VERSION\" \"1.0\"" CRLF
-//				   "OK \"SIEVE ready.\"" CRLF;
 static u_char  sieve_ok[] = "OK completed" CRLF;
 static u_char  sieve_next[] = "OK" CRLF;
-static u_char  sieve_plain_next[] = "+ " CRLF;
+static u_char  sieve_plain_next[] = "\"\"" CRLF;
 static u_char  sieve_ready[] = "OK \"SIEVE ready.\"" CRLF;
 static u_char  sieve_username[] = "\"VXNlcm5hbWU6\"" CRLF;
 static u_char  sieve_password[] = "\"UGFzc3dvcmQ6\"" CRLF;
